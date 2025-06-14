@@ -1,0 +1,25 @@
+{
+    "manifest_version": 3,
+    "name": "Amazon Cost Awareness",
+    "version": "1.0",
+    "description": "Shows how many work-days you need to buy the current Amazon product.",
+    "permissions": [
+      "storage",
+      "activeTab",
+      "scripting"
+    ],
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": "icon.png"
+    },
+    "icons": {
+      "48": "icon.png"
+    },
+    "content_scripts": [
+      {
+        "matches": ["*://*.amazon.com/*", "*://*.amazon.co.uk/*", "*://*.amazon.de/*", "*://*.amazon.fr/*", "*://*.amazon.it/*", "*://*.amazon.es/*", "*://*.amazon.ca/*", "*://*.amazon.com.au/*", "*://*.amazon.com.br/*", "*://*.amazon.com.mx/*", "*://*.amazon.co.jp/*", "*://*.amazon.in/*", "*://*.flipkart.com/*"],
+        "js": ["content_scripts.js"]
+      }
+    ]
+  }
+  
