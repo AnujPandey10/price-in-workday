@@ -1,22 +1,22 @@
 // content_script.js
 
 function getAmazonPrice() {
-    // Updated Amazon.in price selectors
+   
     const selectors = [
-        '.a-price .a-offscreen',  // Main price display
-        '.a-price-whole',         // Whole number part of price
-        '#priceblock_ourprice',   // Legacy price block
-        '#priceblock_dealprice',  // Legacy deal price
-        '#price_inside_buybox',   // Legacy buybox price
-        '.a-price .a-offscreen',  // Price with currency symbol
-        '.a-price .a-price-whole' // Price without currency symbol
+        '.a-price .a-offscreen',  
+        '.a-price-whole',         
+        '#priceblock_ourprice',   
+        '#priceblock_dealprice',  
+        '#price_inside_buybox',   
+        '.a-price .a-offscreen',  
+        '.a-price .a-price-whole' 
     ];
 
     for (let sel of selectors) {
         const elements = document.querySelectorAll(sel);
         for (let el of elements) {
             const priceText = el.textContent.trim();
-            // Remove currency symbols, commas, and any other non-numeric characters except decimal point
+       
             const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
             if (!isNaN(price) && price > 0) {
                 console.log('Found price:', price, 'from selector:', sel);
@@ -29,13 +29,13 @@ function getAmazonPrice() {
 }
 
 function getFlipkartPrice() {
-    // Flipkart price selectors
+   
     const selectors = [
-        '.Nx9bqj.CxhGGd', // New main price selector
-        '._30jeq3._16Jk6d', // Old main price
+        '.Nx9bqj.CxhGGd', 
+        '._30jeq3._16Jk6d',// Old main price
         '._25b18c ._30jeq3', // Offers
-        '._1vC4OE._3qQ9m1', // Legacy
-        '._3qQ9m1' // Fallback
+        '._1vC4OE._3qQ9m1', 
+        '._3qQ9m1' 
     ];
     for (let sel of selectors) {
         const elements = document.querySelectorAll(sel);
@@ -51,11 +51,11 @@ function getFlipkartPrice() {
 }
 
 function insertDaysNextToPrice(days, priceElement) {
-    // Remove any previous badge
+
     const oldBadge = document.getElementById('earn-days-inline');
     if (oldBadge) oldBadge.remove();
 
-    // Create a new span
+ 
     const badge = document.createElement('span');
     badge.id = 'earn-days-inline';
     badge.textContent = ` (${days.toFixed(1)} work-days to earn)`;
@@ -64,17 +64,17 @@ function insertDaysNextToPrice(days, priceElement) {
     badge.style.color = 'red';
     badge.style.fontWeight = 'bold';
 
-    // Insert after the price element
+  
     priceElement.parentNode.insertBefore(badge, priceElement.nextSibling);
 }
 
 function displayDaysBadge(days) {
-    // Create or update our badge (fallback)
+
     let badge = document.getElementById('earn-days-badge');
     if (!badge) {
         badge = document.createElement('div');
         badge.id = 'earn-days-badge';
-        // Enhanced styling
+   
         badge.style.position = 'fixed';
         badge.style.bottom = '20px';
         badge.style.right = '20px';
@@ -110,7 +110,7 @@ function waitForPriceElement(getPriceFn, maxAttempts = 20, interval = 500) {
     });
 }
 
-// Main flow
+
 (async () => {
     if (document.readyState === 'loading') {
         await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
@@ -118,11 +118,11 @@ function waitForPriceElement(getPriceFn, maxAttempts = 20, interval = 500) {
 
     let priceResult = null;
     if (window.location.hostname.includes('amazon.')) {
-        // Amazon: use original logic
+       
         await new Promise(resolve => setTimeout(resolve, 1000));
         priceResult = getAmazonPrice();
     } else if (window.location.hostname.includes('flipkart.')) {
-        // Flipkart: robustly wait for price element
+    
         priceResult = await waitForPriceElement(getFlipkartPrice, 20, 500);
     }
     if (!priceResult) {
