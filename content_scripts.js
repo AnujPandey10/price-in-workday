@@ -1,29 +1,78 @@
 // content_script.js
 
 function getAmazonPrice() {
-   
+    console.log('getAmazonPrice() called for URL:', window.location.href);
+    
+    // Updated Amazon.in price selectors with more comprehensive coverage
     const selectors = [
-        '.a-price .a-offscreen',  
-        '.a-price-whole',         
-        '#priceblock_ourprice',   
-        '#priceblock_dealprice',  
-        '#price_inside_buybox',   
-        '.a-price .a-offscreen',  
-        '.a-price .a-price-whole' 
+        // Primary selectors
+        '.a-price .a-offscreen',  // Main price display
+        '.a-price-whole',         // Whole number part of price
+        '.a-price .a-price-whole', // Price without currency symbol
+        
+        // Alternative selectors
+        '.a-price-range .a-offscreen', // Price range
+        '.a-price .a-price-fraction', // Price fraction
+        '.a-price .a-price-symbol',   // Price symbol
+        
+        // Legacy selectors
+        '#priceblock_ourprice',   // Legacy price block
+        '#priceblock_dealprice',  // Legacy deal price
+        '#price_inside_buybox',   // Legacy buybox price
+        
+        // Newer selectors
+        '[data-a-color="price"] .a-offscreen',
+        '.a-price-current .a-offscreen',
+        '.a-price-current .a-price-whole',
+        '.a-price-current .a-price-fraction',
+        
+        // Generic price selectors
+        '[class*="price"] .a-offscreen',
+        '[class*="Price"] .a-offscreen',
+        
+        // Direct price elements
+        '.a-price-current',
+        '.a-price'
     ];
 
+    console.log('Testing selectors...');
     for (let sel of selectors) {
         const elements = document.querySelectorAll(sel);
+        console.log(`Selector "${sel}": found ${elements.length} elements`);
+        
         for (let el of elements) {
             const priceText = el.textContent.trim();
-       
+            console.log(`  Element text: "${priceText}"`);
+            
+            // Remove currency symbols, commas, and any other non-numeric characters except decimal point
             const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
             if (!isNaN(price) && price > 0) {
-                console.log('Found price:', price, 'from selector:', sel);
+                console.log('Found valid price:', price, 'from selector:', sel);
                 return { price, el };
             }
         }
     }
+    
+    // Fallback: search for any element containing price-like text
+    console.log('No price found with selectors, trying fallback search...');
+    const allElements = document.querySelectorAll('*');
+    const pricePattern = /₹\s*([\d,]+(?:\.\d{2})?)/;
+    
+    for (let el of allElements) {
+        const text = el.textContent;
+        if (text && pricePattern.test(text)) {
+            const match = text.match(pricePattern);
+            if (match) {
+                const priceText = match[1];
+                const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
+                if (!isNaN(price) && price > 0) {
+                    console.log('Found price via fallback:', price, 'from text:', text.trim());
+                    return { price, el };
+                }
+            }
+        }
+    }
+    
     console.log('No price found on page');
     return null;
 }
@@ -63,9 +112,20 @@ function insertDaysNextToPrice(days, priceElement) {
     badge.style.fontSize = '16px';
     badge.style.color = 'red';
     badge.style.fontWeight = 'bold';
+    badge.style.background = 'white';
+    badge.style.padding = '2px 6px';
+    badge.style.borderRadius = '4px';
 
-  
-    priceElement.parentNode.insertBefore(badge, priceElement.nextSibling);
+    // Try to insert after the closest .a-price parent
+    const priceBlock = priceElement.closest('.a-price');
+    if (priceBlock && priceBlock.parentNode) {
+        priceBlock.parentNode.insertBefore(badge, priceBlock.nextSibling);
+    } else if (priceElement.parentNode) {
+        priceElement.parentNode.insertBefore(badge, priceElement.nextSibling);
+    } else {
+        // Fallback: floating badge
+        displayDaysBadge(days);
+    }
 }
 
 function displayDaysBadge(days) {
@@ -112,24 +172,40 @@ function waitForPriceElement(getPriceFn, maxAttempts = 20, interval = 500) {
 
 
 (async () => {
+    console.log('Content script started for:', window.location.href);
+    
     if (document.readyState === 'loading') {
+        console.log('Document still loading, waiting for DOMContentLoaded...');
         await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
     }
 
     let priceResult = null;
     if (window.location.hostname.includes('amazon.')) {
-       
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('Detected Amazon site, using Amazon price extraction...');
+        // Amazon: wait a bit longer for dynamic content to load
+        await new Promise(resolve => setTimeout(resolve, 2000));
         priceResult = getAmazonPrice();
+        
+        // If no price found initially, try again after a longer delay
+        if (!priceResult) {
+            console.log('No price found initially, waiting longer and trying again...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            priceResult = getAmazonPrice();
+        }
     } else if (window.location.hostname.includes('flipkart.')) {
-    
+        console.log('Detected Flipkart site, using Flipkart price extraction...');
+        // Flipkart: robustly wait for price element
         priceResult = await waitForPriceElement(getFlipkartPrice, 20, 500);
     }
+    
     if (!priceResult) {
-        console.log('No price found on this page');
+        console.log('No price found on this page after all attempts');
         return;
     }
+    
     const { price, el: priceElement } = priceResult;
+    console.log('Price found:', price, 'Element:', priceElement);
+    
     chrome.storage.sync.get(['monthlySalary'], ({ monthlySalary }) => {
         if (!monthlySalary || monthlySalary <= 0) {
             console.log('No salary set in storage');
@@ -137,6 +213,8 @@ function waitForPriceElement(getPriceFn, maxAttempts = 20, interval = 500) {
         }
         const dailyIncome = monthlySalary / 30;
         const daysNeeded = price / dailyIncome;
+        console.log('Calculated days needed:', daysNeeded, 'for price:', price, 'with daily income:', dailyIncome);
+        
         if (priceElement) {
             insertDaysNextToPrice(daysNeeded, priceElement);
         } else {
