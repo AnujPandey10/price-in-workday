@@ -3,22 +3,21 @@
 function getAmazonPrice() {
     console.log('getAmazonPrice() called for URL:', window.location.href);
     
-    // Updated Amazon.in price selectors with more comprehensive coverage
     const selectors = [
         // Primary selectors
-        '.a-price .a-offscreen',  // Main price display
-        '.a-price-whole',         // Whole number part of price
-        '.a-price .a-price-whole', // Price without currency symbol
+        '.a-price .a-offscreen',  
+        '.a-price-whole',         
+        '.a-price .a-price-whole', 
         
         // Alternative selectors
-        '.a-price-range .a-offscreen', // Price range
-        '.a-price .a-price-fraction', // Price fraction
-        '.a-price .a-price-symbol',   // Price symbol
+        '.a-price-range .a-offscreen', 
+        '.a-price .a-price-fraction', 
+        '.a-price .a-price-symbol',   
         
         // Legacy selectors
-        '#priceblock_ourprice',   // Legacy price block
-        '#priceblock_dealprice',  // Legacy deal price
-        '#price_inside_buybox',   // Legacy buybox price
+        '#priceblock_ourprice',   
+        '#priceblock_dealprice',  
+        '#price_inside_buybox',   
         
         // Newer selectors
         '[data-a-color="price"] .a-offscreen',
@@ -44,7 +43,7 @@ function getAmazonPrice() {
             const priceText = el.textContent.trim();
             console.log(`  Element text: "${priceText}"`);
             
-            // Remove currency symbols, commas, and any other non-numeric characters except decimal point
+            
             const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
             if (!isNaN(price) && price > 0) {
                 console.log('Found valid price:', price, 'from selector:', sel);
@@ -53,7 +52,7 @@ function getAmazonPrice() {
         }
     }
     
-    // Fallback: search for any element containing price-like text
+    
     console.log('No price found with selectors, trying fallback search...');
     const allElements = document.querySelectorAll('*');
     const pricePattern = /₹\s*([\d,]+(?:\.\d{2})?)/;
@@ -81,7 +80,7 @@ function getFlipkartPrice() {
    
     const selectors = [
         '.Nx9bqj.CxhGGd', 
-        '._30jeq3._16Jk6d',// Old main price
+        '._30jeq3._16Jk6d',
         '._25b18c ._30jeq3', // Offers
         '._1vC4OE._3qQ9m1', 
         '._3qQ9m1' 
@@ -116,14 +115,13 @@ function insertDaysNextToPrice(days, priceElement) {
     badge.style.padding = '2px 6px';
     badge.style.borderRadius = '4px';
 
-    // Try to insert after the closest .a-price parent
+  
     const priceBlock = priceElement.closest('.a-price');
     if (priceBlock && priceBlock.parentNode) {
         priceBlock.parentNode.insertBefore(badge, priceBlock.nextSibling);
     } else if (priceElement.parentNode) {
         priceElement.parentNode.insertBefore(badge, priceElement.nextSibling);
     } else {
-        // Fallback: floating badge
         displayDaysBadge(days);
     }
 }
@@ -186,7 +184,7 @@ function waitForPriceElement(getPriceFn, maxAttempts = 20, interval = 500) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         priceResult = getAmazonPrice();
         
-        // If no price found initially, try again after a longer delay
+    
         if (!priceResult) {
             console.log('No price found initially, waiting longer and trying again...');
             await new Promise(resolve => setTimeout(resolve, 3000));
@@ -194,7 +192,7 @@ function waitForPriceElement(getPriceFn, maxAttempts = 20, interval = 500) {
         }
     } else if (window.location.hostname.includes('flipkart.')) {
         console.log('Detected Flipkart site, using Flipkart price extraction...');
-        // Flipkart: robustly wait for price element
+     
         priceResult = await waitForPriceElement(getFlipkartPrice, 20, 500);
     }
     
